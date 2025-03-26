@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const { createOrganization } = require("../controllers/organization.controller");
-const authMiddleware = require("../middlewares/auth.middleware");
+const {checkForApiKey,verifyJWT} = require("../middlewares/auth.middleware");
 
-router.post("/create",authMiddleware, createOrganization);
+router.post("/create",checkForApiKey, verifyJWT, createOrganization);
 
 module.exports = router;
