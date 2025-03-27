@@ -27,7 +27,6 @@ class Verification{
     static updatePayload(payload){
         return {
             name : payload.name,
-            username : payload.username,
             email : payload.email
         }
     }
@@ -48,7 +47,6 @@ class Verification{
         if(!jwtPayload && refreshPayload){
             const newPayload = {
                 name:refreshPayload.name,
-                username:refreshPayload.username,
                 email:refreshPayload.email
             }
             const newJwtToken = this.generateJwt(newPayload);
@@ -64,7 +62,6 @@ class Verification{
         if(jwtPayload && !refreshPayload){
             const newPayload = {
                 name:jwtPayload.name,
-                username:jwtPayload.username,
                 email:jwtPayload.email
             }
             const newRefreshToken = this.generateJwt(newPayload);

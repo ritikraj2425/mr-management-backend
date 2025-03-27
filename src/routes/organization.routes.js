@@ -6,3 +6,8 @@ const {checkForApiKey,verifyJWT} = require("../middlewares/auth.middleware");
 router.post("/create",checkForApiKey, verifyJWT, createOrganization);
 
 module.exports = router;
+
+
+
+// otp service is pending
+// reviewer email send in pending
