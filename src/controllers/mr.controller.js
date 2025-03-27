@@ -1,6 +1,7 @@
 const MRModel = require("../models/mr.model");
-const Verification = require("../services/jsonWebToken");
+const { getUserFromToken } = require("../utils/userDetails.utils");
 const User = require("../models/user.model");
+const Organization = require("../models/organization.model");
 const Group = require("../models/group.model"); 
 
 exports.createMR = async (req, res) => {
@@ -9,17 +10,14 @@ exports.createMR = async (req, res) => {
         const { jwttoken, refreshtoken } = req.headers;
 
         if (!title || !groupId || !link || !reviewerEmails) {
-            return res.status(400).json({ message: "all fields are required." });
+            return res.status(400).json({ message: "All fields are required." });
         }
 
-        const check = Verification.verifyJwt(jwttoken, refreshtoken);
-        if (!check) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
-        const payload = check.credentials.payload;
-        const creatorUser = await User.findOne({ email: payload.email });
-        if (!creatorUser) {
-            return res.status(400).json({ message: "Creator user not found." });
+        let creatorUser;
+        try {
+            creatorUser = await getUserFromToken(jwttoken, refreshtoken);
+        } catch (error) {
+            return res.status(401).json({ message: error.message });
         }
         const creator = creatorUser._id;
 
@@ -49,6 +47,13 @@ exports.createMR = async (req, res) => {
             reviewerEmails: reviewerIds
         });
         await mr.save();
+
+        creatorUser.createdMRs.push(mr._id);
+        await creatorUser.save();
+        const group = await Group.findById(groupId);
+        group.MRs.push(mr._id);
+        await group.save();
+
         res.status(201).json({ message: "MR created successfully", mr });
     } catch (error) {
         console.error("Error creating MR:", error);

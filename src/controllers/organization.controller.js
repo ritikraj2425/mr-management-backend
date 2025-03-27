@@ -28,11 +28,13 @@ exports.createOrganization = async (req, res) => {
         }
         if (!userWithDomain.isAdmin) {
             userWithDomain.isAdmin = true;
-            await userWithDomain.save();
         }
 
         const organization = new Organization({ orgName, orgEmail, orgDomain: domain, members: [userWithDomain] });
         await organization.save();
+
+        userWithDomain.organizationId = organization._id; 
+        await userWithDomain.save();
 
         res.status(201).json({ message: "Organization created successfully", organization });
     } catch (error) {
