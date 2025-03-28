@@ -108,7 +108,7 @@ exports.authCallback = async (req, res) => {
                     client_id: process.env.GITHUB_CLIENT_ID,
                     client_secret: process.env.GITHUB_CLIENT_SECRET,
                     code,
-                    redirect_uri: process.env.REDIRECT_URI,
+                    redirect_uri: process.env.REDIRECT_URI, // Must exactly match the OAuth app settings
                 };
                 headers = { Accept: "application/json" };
                 break;
@@ -131,20 +131,12 @@ exports.authCallback = async (req, res) => {
                     grant_type: "authorization_code",
                 };
                 break;
-            // case "azure":
-            //     tokenUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
-            //     tokenData = {
-            //         client_id: CLIENT_ID.azure,
-            //         client_secret: CLIENT_SECRET.azure,
-            //         code,
-            //         redirect_uri: REDIRECT_URI,
-            //         grant_type: "authorization_code",
-            //     };
-            //     break;
             default:
                 return res.status(400).json({ message: "Unsupported platform." });
         }
 
+
+        // Exchange the code for an access token
         const tokenResponse = await axios.post(tokenUrl, tokenData, { headers });
         const accessToken = tokenResponse.data.access_token;
         if (!accessToken) {
@@ -156,7 +148,7 @@ exports.authCallback = async (req, res) => {
             name,
             organizationId,
             members: [userId],
-            tokens: { [platform]: accessToken },
+            tokens: { [platform]: accessToken }, // Store token for platform
             authorizedPlatforms: [platform],
         });
         await group.save();
@@ -168,10 +160,8 @@ exports.authCallback = async (req, res) => {
         );
 
         // Redirect to the frontend homepage after successful group creation.
-        // Ensure that process.env.FRONTEND_URL is set to your deployed frontend URL.
         res.redirect(process.env.FRONTEND_URL || "http://localhost:3000");
     } catch (error) {
-        console.error("OAuth Callback Error:", error);
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
