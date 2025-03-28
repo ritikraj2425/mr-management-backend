@@ -100,45 +100,54 @@ exports.authCallback = async (req, res) => {
         }
 
         let tokenUrl, tokenData, headers = {};
+        let scopes = ""; // Define scopes for MR access only
 
         switch (platform) {
             case "github":
                 tokenUrl = "https://github.com/login/oauth/access_token";
+                scopes = "read:pull_request"; // Read-only pull request access
                 tokenData = {
                     client_id: process.env.GITHUB_CLIENT_ID,
                     client_secret: process.env.GITHUB_CLIENT_SECRET,
                     code,
-                    redirect_uri: process.env.REDIRECT_URI, // Must exactly match the OAuth app settings
+                    redirect_uri: process.env.REDIRECT_URI,
+                    scope: scopes,
                 };
                 headers = { Accept: "application/json" };
                 break;
             case "gitlab":
                 tokenUrl = "https://gitlab.com/oauth/token";
+                scopes = "read_api"; // Read access to Merge Request data
                 tokenData = {
                     client_id: process.env.GITLAB_CLIENT_ID,
                     client_secret: process.env.GITLAB_CLIENT_SECRET,
                     code,
                     redirect_uri: process.env.REDIRECT_URI,
                     grant_type: "authorization_code",
+                    scope: scopes,
                 };
                 break;
+
             case "bitbucket":
                 tokenUrl = "https://bitbucket.org/site/oauth2/access_token";
+                scopes = "repository.pullrequest"; // Read-only access to pull requests (MRs)
                 tokenData = {
                     client_id: process.env.BITBUCKET_CLIENT_ID,
                     client_secret: process.env.BITBUCKET_CLIENT_SECRET,
                     code,
                     grant_type: "authorization_code",
+                    scope: scopes,
                 };
                 break;
+
             default:
                 return res.status(400).json({ message: "Unsupported platform." });
         }
 
-
         // Exchange the code for an access token
         const tokenResponse = await axios.post(tokenUrl, tokenData, { headers });
         const accessToken = tokenResponse.data.access_token;
+
         if (!accessToken) {
             throw new Error("Access token retrieval failed.");
         }
@@ -161,6 +170,7 @@ exports.authCallback = async (req, res) => {
 
         // Redirect to the frontend homepage after successful group creation.
         res.redirect(process.env.FRONTEND_URL || "http://localhost:3000");
+
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
     }

@@ -62,7 +62,6 @@ exports.createGroup = async (req, res) => {
 
         res.json({ redirectUrl: authUrl }); // Send redirect URL to frontend
     } catch (error) {
-        console.error("Error starting OAuth:", error);
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };

@@ -8,13 +8,12 @@ async function getMRStatus(mrLink, groupId) {
 
         let apiUrl;
         let headers = {};
-
         if (mrLink.includes("github.com") && group.tokens.github) {
             const match = mrLink.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
             if (!match) throw new Error("Invalid GitHub MR link");
             const [_, owner, repo, prNumber] = match;
             apiUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`;
-            headers = { Authorization: `token ${group.tokens.github}` };
+            headers = { Authorization: `Bearer ${group.tokens.github}` };
 
         } else if (mrLink.includes("gitlab.com") && group.tokens.gitlab) {
             const match = mrLink.match(/gitlab\.com\/([^/]+)\/([^/]+)\/-\/merge_requests\/(\d+)/);
@@ -46,7 +45,6 @@ async function getMRStatus(mrLink, groupId) {
         return response.data.state || response.data.status || "unknown"; // 'open', 'merged', 'closed'
 
     } catch (error) {
-        console.error(`Failed to fetch MR status: ${error.message}`);
         return "unknown";
     }
 }

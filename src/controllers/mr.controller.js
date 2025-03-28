@@ -3,6 +3,7 @@ const { getUserFromToken } = require("../utils/userDetails.utils");
 const User = require("../models/user.model");
 const Group = require("../models/group.model"); 
 const { getMRStatus } = require("../utils/mrStatus.utils");
+const mongoose = require("mongoose");
 
 exports.createMR = async (req, res) => {
     try {
@@ -65,7 +66,6 @@ exports.createMR = async (req, res) => {
 
         res.status(201).json({ message: "MR created successfully", mr });
     } catch (error) {
-        console.error("Error creating MR:", error);
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
@@ -73,10 +73,11 @@ exports.createMR = async (req, res) => {
 
 exports.mrUpdate = async (req, res) => {
     try {
-        const { groupId } = req.params;
-
+        const { groupId } = req.query;
+        const groupIdObj = new mongoose.Types.ObjectId(groupId);
         // Fetch only MRs that are not closed/merged
-        const mrs = await MRModel.find({ groupId, status: { $nin: ["closed", "merged"] } });
+        const mrs = await MRModel.find({ groupId: groupIdObj, status: { $nin: ["closed", "merged"] } });
+
 
         if (mrs.length === 0) {
             return res.json({ message: "No open or pending MRs found to update" });
@@ -85,18 +86,16 @@ exports.mrUpdate = async (req, res) => {
         // Update each MR's status
         const updates = await Promise.all(mrs.map(async (mr) => {
             try {
-                const status = await getMRStatus(mr.link);
+                const status = await getMRStatus(mr.link, groupIdObj);
                 await MRModel.findByIdAndUpdate(mr._id, { status }, { new: true });
                 return { mrId: mr._id, status };
             } catch (error) {
-                console.error(`Error updating MR ${mr._id}:`, error.message);
                 return { mrId: mr._id, status: "update_failed" };
             }
         }));
 
         res.json({ message: "MR statuses updated successfully", updates });
     } catch (error) {
-        console.error("Error updating MR statuses:", error);
         res.status(500).json({ message: "Server error", error: error.message });
     }
 }
