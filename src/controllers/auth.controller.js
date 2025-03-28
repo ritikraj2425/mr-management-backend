@@ -117,14 +117,13 @@ exports.authCallback = async (req, res) => {
                 break;
             case "gitlab":
                 tokenUrl = "https://gitlab.com/oauth/token";
-                scopes = "read_user read_repository";
+                scopes = "read_api read_repository"; // Matches authorization request
                 tokenData = {
                     client_id: process.env.GITLAB_CLIENT_ID,
                     client_secret: process.env.GITLAB_CLIENT_SECRET,
                     code,
                     redirect_uri: process.env.REDIRECT_URI,
                     grant_type: "authorization_code",
-                    scope: scopes,
                 };
                 break;
 
