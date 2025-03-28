@@ -117,7 +117,7 @@ exports.authCallback = async (req, res) => {
                 break;
             case "gitlab":
                 tokenUrl = "https://gitlab.com/oauth/token";
-                scopes = "read_api"; // Read access to Merge Request data
+                scopes = "read_user read_repository";
                 tokenData = {
                     client_id: process.env.GITLAB_CLIENT_ID,
                     client_secret: process.env.GITLAB_CLIENT_SECRET,

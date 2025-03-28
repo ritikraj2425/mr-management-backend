@@ -47,8 +47,8 @@ exports.createGroup = async (req, res) => {
             case "github":
                 authUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID.github}&redirect_uri=${REDIRECT_URI}&state=${encodeURIComponent(state)}`;
                 break;
-            case "gitlab":
-                authUrl = `https://gitlab.com/oauth/authorize?client_id=${CLIENT_ID.gitlab}&redirect_uri=${REDIRECT_URI}&response_type=code&state=${encodeURIComponent(state)}`;
+                case "gitlab":
+                    authUrl = `https://gitlab.com/oauth/authorize?client_id=${CLIENT_ID.gitlab}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=read_api&state=${encodeURIComponent(state)}`;                
                 break;
             case "bitbucket":
                 authUrl = `https://bitbucket.org/site/oauth2/authorize?client_id=${CLIENT_ID.bitbucket}&response_type=code&state=${encodeURIComponent(state)}`;
