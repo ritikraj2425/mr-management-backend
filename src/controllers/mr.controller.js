@@ -1,8 +1,8 @@
 const MRModel = require("../models/mr.model");
 const { getUserFromToken } = require("../utils/userDetails.utils");
 const User = require("../models/user.model");
-const Organization = require("../models/organization.model");
 const Group = require("../models/group.model"); 
+const { getMRStatus } = require("../utils/mrStatus.utils");
 
 exports.createMR = async (req, res) => {
     try {
@@ -22,11 +22,12 @@ exports.createMR = async (req, res) => {
         const creator = creatorUser._id;
 
         let reviewerIds = [];
-        if (reviewerEmails && reviewerEmails.length > 0) {
+        if (reviewerEmails.length > 0) {
             const group = await Group.findById(groupId);
             if (!group) {
                 return res.status(400).json({ message: "Group not found." });
             }
+
             reviewerIds = await Promise.all(reviewerEmails.map(async (email) => {
                 const user = await User.findOne({ email });
                 if (!user) {
@@ -39,6 +40,7 @@ exports.createMR = async (req, res) => {
             }));
         }
 
+        // Create the new MR
         const mr = new MRModel({
             title,
             creator, 
@@ -50,9 +52,16 @@ exports.createMR = async (req, res) => {
 
         creatorUser.createdMRs.push(mr._id);
         await creatorUser.save();
+
         const group = await Group.findById(groupId);
         group.MRs.push(mr._id);
         await group.save();
+
+        await Promise.all(reviewerIds.map(async (reviewerId) => {
+            await User.findByIdAndUpdate(reviewerId, { 
+                $push: { assignedMRs: mr._id }
+            });
+        }));
 
         res.status(201).json({ message: "MR created successfully", mr });
     } catch (error) {
@@ -60,3 +69,34 @@ exports.createMR = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
+
+exports.mrUpdate = async (req, res) => {
+    try {
+        const { groupId } = req.params;
+
+        // Fetch only MRs that are not closed/merged
+        const mrs = await MRModel.find({ groupId, status: { $nin: ["closed", "merged"] } });
+
+        if (mrs.length === 0) {
+            return res.json({ message: "No open or pending MRs found to update" });
+        }
+
+        // Update each MR's status
+        const updates = await Promise.all(mrs.map(async (mr) => {
+            try {
+                const status = await getMRStatus(mr.link);
+                await MRModel.findByIdAndUpdate(mr._id, { status }, { new: true });
+                return { mrId: mr._id, status };
+            } catch (error) {
+                console.error(`Error updating MR ${mr._id}:`, error.message);
+                return { mrId: mr._id, status: "update_failed" };
+            }
+        }));
+
+        res.json({ message: "MR statuses updated successfully", updates });
+    } catch (error) {
+        console.error("Error updating MR statuses:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+}

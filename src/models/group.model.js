@@ -15,7 +15,14 @@ const GroupSchema = new mongoose.Schema({
     MRs: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "MR"
-    }]
+    }],
+    tokens: {
+        github: { type: String },  // GitHub OAuth token
+        gitlab: { type: String },  // GitLab OAuth token
+        bitbucket: { type: String },  // Bitbucket OAuth token
+        azure: { type: String }  // Azure DevOps OAuth token
+    },
+    authorizedPlatforms: { type: [String], default: [] },
 }, {
     timestamps: true
 });

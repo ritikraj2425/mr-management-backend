@@ -11,7 +11,7 @@ const MRSchema = new mongoose.Schema(
             }],
         creator: { type: String, ref: "User" },
         groupId: { type: mongoose.Schema.Types.ObjectId, ref: "Group" },
-        status: { type: String, enum: ["open", "closed"], default: "open" },
+        status: { type: String, enum: ["open", "pending", "merged", "closed", "unknown"], default: "pending" },
         link: { type: String, required: true },
         createdAt: { type: Date, default: Date.now },
     }

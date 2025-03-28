@@ -3,6 +3,10 @@ require("dotenv").config();
 const Verification = require('../services/jsonWebToken');
 const Users = require("../models/user.model");
 const saltRounds = 10;
+const Group = require("../models/group.model");
+const Organization = require("../models/organization.model");
+const axios = require("axios");
+
 
 
 exports.signup = async (req, res) => {
@@ -75,5 +79,99 @@ exports.login = async (req, res) => {
         });
     } catch (e) {
         res.status(500).json({ message: "Something went wrong while logging in" });
+    }
+};
+
+const CLIENT_SECRET = {
+    github: process.env.GITHUB_CLIENT_SECRET,
+    gitlab: process.env.GITLAB_CLIENT_SECRET,
+    bitbucket: process.env.BITBUCKET_CLIENT_SECRET,
+    // azure: process.env.AZURE_CLIENT_SECRET,
+};
+
+
+exports.authCallback = async (req, res) => {
+    try {
+        const { code, state } = req.query;
+        const { organizationId, name, userId, platform } = JSON.parse(decodeURIComponent(state));
+
+        if (!code || !organizationId || !name || !userId || !platform) {
+            return res.status(400).json({ message: "Invalid request." });
+        }
+
+        let tokenUrl, tokenData, headers = {};
+
+        switch (platform) {
+            case "github":
+                tokenUrl = "https://github.com/login/oauth/access_token";
+                tokenData = {
+                    client_id: process.env.GITHUB_CLIENT_ID,
+                    client_secret: process.env.GITHUB_CLIENT_SECRET,
+                    code,
+                    redirect_uri: process.env.REDIRECT_URI,
+                };
+                headers = { Accept: "application/json" };
+                break;
+            case "gitlab":
+                tokenUrl = "https://gitlab.com/oauth/token";
+                tokenData = {
+                    client_id: process.env.GITLAB_CLIENT_ID,
+                    client_secret: process.env.GITLAB_CLIENT_SECRET,
+                    code,
+                    redirect_uri: process.env.REDIRECT_URI,
+                    grant_type: "authorization_code",
+                };
+                break;
+            case "bitbucket":
+                tokenUrl = "https://bitbucket.org/site/oauth2/access_token";
+                tokenData = {
+                    client_id: process.env.BITBUCKET_CLIENT_ID,
+                    client_secret: process.env.BITBUCKET_CLIENT_SECRET,
+                    code,
+                    grant_type: "authorization_code",
+                };
+                break;
+            // case "azure":
+            //     tokenUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+            //     tokenData = {
+            //         client_id: CLIENT_ID.azure,
+            //         client_secret: CLIENT_SECRET.azure,
+            //         code,
+            //         redirect_uri: REDIRECT_URI,
+            //         grant_type: "authorization_code",
+            //     };
+            //     break;
+            default:
+                return res.status(400).json({ message: "Unsupported platform." });
+        }
+
+        const tokenResponse = await axios.post(tokenUrl, tokenData, { headers });
+        const accessToken = tokenResponse.data.access_token;
+        if (!accessToken) {
+            throw new Error("Access token retrieval failed.");
+        }
+
+        // Create the group with the OAuth token for the given platform
+        const group = new Group({
+            name,
+            organizationId,
+            members: [userId],
+            tokens: { [platform]: accessToken },
+            authorizedPlatforms: [platform],
+        });
+        await group.save();
+
+        // Update the organization to include this new group
+        await Organization.findByIdAndUpdate(
+            organizationId,
+            { $push: { groups: group._id } }
+        );
+
+        // Redirect to the frontend homepage after successful group creation.
+        // Ensure that process.env.FRONTEND_URL is set to your deployed frontend URL.
+        res.redirect(process.env.FRONTEND_URL || "http://localhost:3000");
+    } catch (error) {
+        console.error("OAuth Callback Error:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 };

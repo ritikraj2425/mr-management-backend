@@ -2,13 +2,22 @@ const Group = require("../models/group.model");
 const Organization = require("../models/organization.model");
 const { getUserFromToken } = require("../utils/userDetails.utils");
 
+const CLIENT_ID = {
+    github: process.env.GITHUB_CLIENT_ID,
+    gitlab: process.env.GITLAB_CLIENT_ID,
+    bitbucket: process.env.BITBUCKET_CLIENT_ID,
+    // azure: process.env.AZURE_CLIENT_ID,
+};
+
+const REDIRECT_URI = process.env.REDIRECT_URI;
+
 exports.createGroup = async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, platform } = req.body; // Platform (GitHub, GitLab, Bitbucket, Azure)
         const { jwttoken, refreshtoken } = req.headers;
 
-        if (!name) {
-            return res.status(400).json({ message: "Group name is required." });
+        if (!name || !platform) {
+            return res.status(400).json({ message: "Group name and platform are required." });
         }
 
         let creatorUser;
@@ -26,24 +35,34 @@ exports.createGroup = async (req, res) => {
             return res.status(400).json({ message: "User is not associated with any organization." });
         }
 
-        const organization = await Organization.findById(creatorUser.organizationId);
-        if (!organization) {
-            return res.status(404).json({ message: "Organization not found." });
+        let authUrl;
+        const state = JSON.stringify({
+            organizationId: creatorUser.organizationId,
+            name,
+            userId: creatorUser._id,
+            platform,
+        });
+
+        switch (platform) {
+            case "github":
+                authUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID.github}&redirect_uri=${REDIRECT_URI}&state=${encodeURIComponent(state)}`;
+                break;
+            case "gitlab":
+                authUrl = `https://gitlab.com/oauth/authorize?client_id=${CLIENT_ID.gitlab}&redirect_uri=${REDIRECT_URI}&response_type=code&state=${encodeURIComponent(state)}`;
+                break;
+            case "bitbucket":
+                authUrl = `https://bitbucket.org/site/oauth2/authorize?client_id=${CLIENT_ID.bitbucket}&response_type=code&state=${encodeURIComponent(state)}`;
+                break;
+            // case "azure":
+            //     authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${CLIENT_ID.azure}&response_type=code&redirect_uri=${REDIRECT_URI}&state=${encodeURIComponent(state)}&scope=repo`;
+            //     break;
+            default:
+                return res.status(400).json({ message: "Unsupported platform." });
         }
 
-        const group = new Group({
-            name,
-            organizationId: creatorUser.organizationId,
-            members: [creatorUser._id]
-        });
-        await group.save();
-
-        organization.groups.push(group._id);
-        await organization.save();
-
-        res.status(201).json({ message: "Group created successfully", group });
+        res.json({ redirectUrl: authUrl }); // Send redirect URL to frontend
     } catch (error) {
-        console.error("Error creating group:", error);
+        console.error("Error starting OAuth:", error);
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
