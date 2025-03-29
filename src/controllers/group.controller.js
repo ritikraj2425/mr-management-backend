@@ -16,16 +16,16 @@ exports.createGroup = async (req, res) => {
     try {
         const { name, platform } = req.body; // Platform (GitHub, GitLab, Bitbucket, Azure)
         const { jwttoken, refreshtoken } = req.headers;
-
         if (!name || !platform) {
             return res.status(400).json({ message: "Group name and platform are required." });
         }
 
+        // Authenticate user first before proceeding
         let creatorUser;
         try {
             creatorUser = await getUserFromToken(jwttoken, refreshtoken);
         } catch (error) {
-            return res.status(401).json({ message: error.message });
+            return res.status(401).json({ message: "Invalid or missing token." });
         }
 
         if (!creatorUser.isAdmin) {
@@ -44,6 +44,8 @@ exports.createGroup = async (req, res) => {
             platform,
         });
 
+        console.log("State: ", state);
+
         switch (platform) {
             case "github":
                 authUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID.github}&redirect_uri=${REDIRECT_URI}&state=${encodeURIComponent(state)}`;
@@ -55,9 +57,6 @@ exports.createGroup = async (req, res) => {
             case "bitbucket":
                 authUrl = `https://bitbucket.org/site/oauth2/authorize?client_id=${CLIENT_ID.bitbucket}&response_type=code&state=${encodeURIComponent(state)}`;
                 break;
-            // case "azure":
-            //     authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${CLIENT_ID.azure}&response_type=code&redirect_uri=${REDIRECT_URI}&state=${encodeURIComponent(state)}&scope=repo`;
-            //     break;
             default:
                 return res.status(400).json({ message: "Unsupported platform." });
         }

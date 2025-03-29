@@ -7,7 +7,8 @@ const Group = require("../models/group.model");
 const Organization = require("../models/organization.model");
 const axios = require("axios");
 const { generateOTP, sendOtpEmail } = require("../utils/otp.utils");
-
+const OrganizationOTP = require("../models/organizationOTP");
+const OTPStore = require("../models/OTPStore");
 
 
 exports.signup = async (req, res) => {
@@ -18,32 +19,39 @@ exports.signup = async (req, res) => {
     }
 
     try {
-        let user = await Users.findOne({ email });
+        // Check OTP in OTPStore
+        const otpEntry = await OTPStore.findOne({ email });
 
-        if (!user) {
-            return res.status(404).json({ message: "No OTP request found. Please request OTP first." });
+        if (!otpEntry || otpEntry.otp !== otp) {
+            return res.status(400).json({ message: "Invalid or expired OTP." });
         }
 
-        if (user.isVerified) {
-            return res.status(400).json({ message: "User already verified. Please log in." });
-        }
-
-        if (user.otp !== otp) {
-            return res.status(400).json({ message: "Invalid OTP." });
-        }
-
-        if (user.otpExpiry < new Date()) {
+        if (otpEntry.otpExpiry < new Date()) {
             return res.status(400).json({ message: "OTP expired. Request a new one." });
         }
 
-        // Hash password and verify user
-        user.name = name;
-        user.password = await bcrypt.hash(password, 10);
-        user.isVerified = true;
-        user.otp = undefined;
-        user.otpExpiry = undefined;
+        // Check if user already exists and is verified
+        let user = await Users.findOne({ email });
+        if (user && user.isVerified) {
+            return res.status(400).json({ message: "User already verified. Please log in." });
+        }
 
-        // Check if the user was invited to an organization
+        if (!user) {
+            // Create a new verified user
+            user = new Users({
+                name,
+                email,
+                password: await bcrypt.hash(password, 10),
+                isVerified: true,
+            });
+        } else {
+            // Update existing user
+            user.name = name;
+            user.password = await bcrypt.hash(password, 10);
+            user.isVerified = true;
+        }
+
+        // Check if user was invited to an organization
         const organization = await Organization.findOne({ pendingInvitations: email });
 
         if (organization) {
@@ -54,6 +62,9 @@ exports.signup = async (req, res) => {
         }
 
         await user.save();
+
+        // Delete OTP entry after successful verification
+        await OTPStore.deleteOne({ email });
 
         // Generate tokens
         const payload = { name, email };
@@ -69,6 +80,7 @@ exports.signup = async (req, res) => {
         res.status(500).json({ message: "Error signing up", error: error.message });
     }
 };
+
 
 
 exports.login = async (req, res) => {
@@ -113,6 +125,8 @@ const CLIENT_SECRET = {
 
 
 exports.authCallback = async (req, res) => {
+    console.log("🔹 authCallback function called!");
+
     try {
         const { code, state } = req.query;
         const { organizationId, name, userId, platform } = JSON.parse(decodeURIComponent(state));
@@ -120,9 +134,10 @@ exports.authCallback = async (req, res) => {
         if (!code || !organizationId || !name || !userId || !platform) {
             return res.status(400).json({ message: "Invalid request." });
         }
+        console.log("Received userId:", userId);
 
         let tokenUrl, tokenData, headers = {};
-        let scopes = ""; // Define scopes for MR access only
+        let scopes = "";
 
         switch (platform) {
             case "github":
@@ -183,11 +198,19 @@ exports.authCallback = async (req, res) => {
         });
         await group.save();
 
+        await Users.findByIdAndUpdate(
+            userId,
+            { $push: { groupId: group._id } }, // Adding group to user
+            { new: true }
+        );
         // Update the organization to include this new group
         await Organization.findByIdAndUpdate(
             organizationId,
             { $push: { groups: group._id } }
         );
+        console.log(userId,"useid");
+        
+    
 
         // Redirect to the frontend homepage after successful group creation.
         res.redirect(process.env.FRONTEND_URL || "http://localhost:3000");
@@ -199,6 +222,8 @@ exports.authCallback = async (req, res) => {
 
 
 
+
+
 exports.requestOTP = async (req, res) => {
     const { email } = req.body;
 
@@ -207,26 +232,81 @@ exports.requestOTP = async (req, res) => {
     }
 
     try {
+        // Check if the user already exists and is verified
         let user = await Users.findOne({ email });
-
         if (user && user.isVerified) {
             return res.status(400).json({ message: "User already verified. Please log in." });
         }
 
+        // Generate OTP
         const otp = generateOTP();
         const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10-minute expiry
 
-        if (!user) {
-            user = new Users({ email, otp, otpExpiry, isVerified: false });
+        // Store OTP in OTPStore collection
+        let otpEntry = await OTPStore.findOne({ email });
+
+        if (otpEntry) {
+            otpEntry.otp = otp;
+            otpEntry.otpExpiry = otpExpiry;
         } else {
-            user.otp = otp;
-            user.otpExpiry = otpExpiry;
+            otpEntry = new OTPStore({ email, otp, otpExpiry });
         }
 
-        await user.save();
+        await otpEntry.save();
         await sendOtpEmail(email, otp);
 
         res.status(200).json({ message: "OTP sent to email. Verify to continue." });
+    } catch (error) {
+        res.status(500).json({ message: "Error sending OTP", error: error.message });
+    }
+};
+
+
+
+exports.requestOrgOTP = async (req, res) => {
+    const { orgName, orgEmail } = req.body;
+
+    if (!orgEmail || !orgName) {
+        return res.status(400).json({ message: "Organization name and email are required." });
+    }
+
+    try {
+        // Validate email format
+        const emailParts = orgEmail.split("@");
+        if (emailParts.length !== 2) {
+            return res.status(400).json({ message: "Invalid organization email format." });
+        }
+
+        const domain = emailParts[1];
+        const genericDomains = ["gmail.com", "yahoo.com", "hotmail.com"];
+        if (genericDomains.includes(domain)) {
+            return res.status(400).json({ message: "Invalid organization email. Please use a business email." });
+        }
+
+        // Check if an organization already exists
+        const existingOrg = await Organization.findOne({ orgEmail });
+        if (existingOrg) {
+            return res.status(400).json({ message: `Organization already exists. Please contact the admin (${existingOrg.orgEmail}) to join.` });
+        }
+
+        // Generate OTP
+        const otp = generateOTP();
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // OTP expires in 10 minutes
+
+        // Check if OTP request exists and update it
+        let otpEntry = await OrganizationOTP.findOne({ orgEmail });
+
+        if (otpEntry) {
+            otpEntry.otp = otp;
+            otpEntry.otpExpiry = otpExpiry;
+        } else {
+            otpEntry = new OrganizationOTP({ orgName, orgEmail, otp, otpExpiry });
+        }
+
+        await otpEntry.save();
+        await sendOtpEmail(orgEmail, otp);
+
+        res.status(200).json({ message: "OTP sent to organization email. Verify to continue." });
     } catch (error) {
         res.status(500).json({ message: "Error sending OTP", error: error.message });
     }

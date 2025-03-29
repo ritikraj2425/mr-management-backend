@@ -15,7 +15,9 @@ const OrganizationSchema = new mongoose.Schema({
     orgDomain: { type: String, required: true },
     pendingInvitations: [{
         type: String
-    }]
+    }],
+    isVerified: { type: Boolean, default: false } // New field to track verification
+
 }, {
     timestamps: true
 });

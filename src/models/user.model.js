@@ -6,7 +6,7 @@ const UserSchema = new mongoose.Schema(
         password: { type: String, required: false },
         name: {type: String, required: false},
         organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization" },
-        groupId: { type: [mongoose.Schema.Types.ObjectId], ref: "Group" },
+        groupId: { type: [mongoose.Schema.Types.ObjectId], ref: "Group", default: [] },
         isAdmin: { type: Boolean, default: false },
         createdMRs: { type: [mongoose.Schema.Types.ObjectId], ref: "MR" },
         assignedMRs: { type: [mongoose.Schema.Types.ObjectId], ref: "MR" },

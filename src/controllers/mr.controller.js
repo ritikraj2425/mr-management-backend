@@ -57,9 +57,9 @@ exports.createMR = async (req, res) => {
             const textContent = `You have been assigned a new MR by ${creatorUser.name}. Please check the link: ${link}`;
             const htmlContent = `<p>You have been assigned a new MR by <strong>${creatorUser.name}</strong>. Please check the link: <a href="${link}">${link}</a></p>`;
             try {
-                await sendEmail(user.email, subject, htmlContent, textContent);
+                await sendEmail(email, subject, htmlContent, textContent);
             } catch (emailError) {
-                errors.push(`Failed to send notification email to ${email}: ${emailError.message}`);
+                throw new Error(`Failed to send notification email to ${email}: ${emailError.message}`);
             }
         })
 

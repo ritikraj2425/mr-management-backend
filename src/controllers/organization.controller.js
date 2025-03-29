@@ -1,49 +1,69 @@
 const Organization = require("../models/organization.model");
+const OrganizationOTP = require("../models/organizationOTP");
 const User = require("../models/user.model");
 const { sendEmail } = require('../utils/nodeMailer.utils'); // Adjust the path as necessary
 const { getUserFromToken } = require('../utils/userDetails.utils'); // Adjust the path as necessary
 
-
 exports.createOrganization = async (req, res) => {
     try {
-        const { orgName, orgEmail } = req.body;
-        if (!orgName || !orgEmail) {
+        const { orgName, orgEmail, otp } = req.body;
+
+        if (!orgName || !orgEmail || !otp) {
             return res.status(400).json({ message: "All fields are required." });
         }
 
-        const emailParts = orgEmail.split("@");
-        if (emailParts.length !== 2) {
-            return res.status(400).json({ message: "Invalid organization email format." });
-        }
-        const [address, domain] = emailParts;
-        const genericDomains = ['gmail.com', 'yahoo.com', 'hotmail.com'];
-        if (genericDomains.includes(domain)) {
-            return res.status(400).json({ message: "Invalid organization email. Please use your organization domain." });
-        }
-        const existingOrg = await Organization.findOne({ orgDomain: domain });
-        if (existingOrg) {
-            return res.status(400).json({ message: `Organization already exists ask: ${existingOrg.orgEmail} to add you to the organization.` });
+        // Find the OTP entry
+        const otpEntry = await OrganizationOTP.findOne({ orgEmail });
+        if (!otpEntry || otpEntry.otp !== otp) {
+            return res.status(400).json({ message: "Invalid or expired OTP." });
         }
 
+        // Check if OTP has expired
+        if (new Date() > otpEntry.otpExpiry) {
+            return res.status(400).json({ message: "OTP expired. Please request a new OTP." });
+        }
+
+        // Check if organization already exists
+        const existingOrg = await Organization.findOne({ orgEmail });
+        if (existingOrg) {
+            return res.status(400).json({ message: `Organization already exists. Contact ${existingOrg.orgEmail} to join.` });
+        }
+
+        // Check if user exists
         const userWithDomain = await User.findOne({ email: orgEmail });
         if (!userWithDomain) {
-            return res.status(400).json({ message: "No user found with the provided email.Please create account first" });
+            return res.status(400).json({ message: "No user found with this email. Please create an account first." });
         }
+
         if (!userWithDomain.isAdmin) {
             userWithDomain.isAdmin = true;
         }
 
-        const organization = new Organization({ orgName, orgEmail, orgDomain: domain, members: [userWithDomain] });
+        // Create verified organization
+        const organization = new Organization({
+            orgName,
+            orgEmail,
+            orgDomain: orgEmail.split("@")[1],
+            members: [userWithDomain._id],
+            isVerified: true
+        });
+
         await organization.save();
 
-        userWithDomain.organizationId = organization._id; 
+        // Assign organization to user
+        userWithDomain.organizationId = organization._id;
         await userWithDomain.save();
 
-        res.status(201).json({ message: "Organization created successfully", organization });
+        // Delete OTP entry after successful verification
+        await OrganizationOTP.deleteOne({ orgEmail });
+
+        res.status(201).json({ message: "Organization verified and created successfully", organization });
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
+
 
 
 exports.addMembersToOrganization = async (req, res) => {
