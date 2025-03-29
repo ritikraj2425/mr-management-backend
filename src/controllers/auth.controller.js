@@ -6,48 +6,70 @@ const saltRounds = 10;
 const Group = require("../models/group.model");
 const Organization = require("../models/organization.model");
 const axios = require("axios");
+const { generateOTP, sendOtpEmail } = require("../utils/otp.utils");
 
 
 
 exports.signup = async (req, res) => {
+    const { name, email, password, otp } = req.body;
 
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-        return res.status(400).json({
-            message: "all fields are required",
-        });
+    if (!name || !email || !password || !otp) {
+        return res.status(400).json({ message: "All fields are required." });
     }
+
     try {
-        const checkEmailExist = await Users.findOne({
-            email: email,
-        });
-        if (checkEmailExist) {
-            res
-                .status(400)
-                .send({ message: "email already exists" });
-            return;
+        let user = await Users.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ message: "No OTP request found. Please request OTP first." });
         }
 
-        const hash = await bcrypt.hash(password, saltRounds);
-        const user = new Users({
-            ...req.body,
-            password: hash,
-        });
+        if (user.isVerified) {
+            return res.status(400).json({ message: "User already verified. Please log in." });
+        }
+
+        if (user.otp !== otp) {
+            return res.status(400).json({ message: "Invalid OTP." });
+        }
+
+        if (user.otpExpiry < new Date()) {
+            return res.status(400).json({ message: "OTP expired. Request a new one." });
+        }
+
+        // Hash password and verify user
+        user.name = name;
+        user.password = await bcrypt.hash(password, 10);
+        user.isVerified = true;
+        user.otp = undefined;
+        user.otpExpiry = undefined;
+
+        // Check if the user was invited to an organization
+        const organization = await Organization.findOne({ pendingInvitations: email });
+
+        if (organization) {
+            user.organizationId = organization._id;
+            organization.members.push(user._id);
+            organization.pendingInvitations = organization.pendingInvitations.filter(invEmail => invEmail !== email);
+            await organization.save();
+        }
+
         await user.save();
 
+        // Generate tokens
         const payload = { name, email };
         const token = Verification.generateJwt(payload);
         const refreshToken = Verification.generateRefreshToken(payload);
-        res.status(200).send({
-            message: "success",
+
+        res.status(200).json({
+            message: "Signup successful! You are now verified.",
             jwtToken: token,
             refreshToken: refreshToken,
         });
-        return;
-    } catch (e) {
-        res.status(500).send({ message: "something went wrong while signing up" });
+    } catch (error) {
+        res.status(500).json({ message: "Error signing up", error: error.message });
     }
 };
+
 
 exports.login = async (req, res) => {
     const { email, password } = req.body;
@@ -172,5 +194,40 @@ exports.authCallback = async (req, res) => {
 
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
+
+
+exports.requestOTP = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ message: "Email is required." });
+    }
+
+    try {
+        let user = await Users.findOne({ email });
+
+        if (user && user.isVerified) {
+            return res.status(400).json({ message: "User already verified. Please log in." });
+        }
+
+        const otp = generateOTP();
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10-minute expiry
+
+        if (!user) {
+            user = new Users({ email, otp, otpExpiry, isVerified: false });
+        } else {
+            user.otp = otp;
+            user.otpExpiry = otpExpiry;
+        }
+
+        await user.save();
+        await sendOtpEmail(email, otp);
+
+        res.status(200).json({ message: "OTP sent to email. Verify to continue." });
+    } catch (error) {
+        res.status(500).json({ message: "Error sending OTP", error: error.message });
     }
 };

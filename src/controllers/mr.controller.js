@@ -1,9 +1,10 @@
 const MRModel = require("../models/mr.model");
 const { getUserFromToken } = require("../utils/userDetails.utils");
 const User = require("../models/user.model");
-const Group = require("../models/group.model"); 
+const Group = require("../models/group.model");
 const { getMRStatus } = require("../utils/mrStatus.utils");
 const mongoose = require("mongoose");
+const { sendEmail } = require("../utils/nodeMailer.utils");
 
 exports.createMR = async (req, res) => {
     try {
@@ -44,12 +45,23 @@ exports.createMR = async (req, res) => {
         // Create the new MR
         const mr = new MRModel({
             title,
-            creator, 
+            creator,
             groupId,
             link,
             reviewerEmails: reviewerIds
         });
         await mr.save();
+
+        reviewerEmails.forEach(async (email) => {
+            const subject = `${creatorUser.name} aasigned MR to you`;
+            const textContent = `You have been assigned a new MR by ${creatorUser.name}. Please check the link: ${link}`;
+            const htmlContent = `<p>You have been assigned a new MR by <strong>${creatorUser.name}</strong>. Please check the link: <a href="${link}">${link}</a></p>`;
+            try {
+                await sendEmail(user.email, subject, htmlContent, textContent);
+            } catch (emailError) {
+                errors.push(`Failed to send notification email to ${email}: ${emailError.message}`);
+            }
+        })
 
         creatorUser.createdMRs.push(mr._id);
         await creatorUser.save();
@@ -59,7 +71,7 @@ exports.createMR = async (req, res) => {
         await group.save();
 
         await Promise.all(reviewerIds.map(async (reviewerId) => {
-            await User.findByIdAndUpdate(reviewerId, { 
+            await User.findByIdAndUpdate(reviewerId, {
                 $push: { assignedMRs: mr._id }
             });
         }));
