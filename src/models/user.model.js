@@ -11,8 +11,6 @@ const UserSchema = new mongoose.Schema(
         createdMRs: { type: [mongoose.Schema.Types.ObjectId], ref: "MR" },
         assignedMRs: { type: [mongoose.Schema.Types.ObjectId], ref: "MR" },
         isVerified: { type: Boolean, default: false },
-        otp: { type: String },
-        otpExpiry: { type: Date },
     }
 )
 

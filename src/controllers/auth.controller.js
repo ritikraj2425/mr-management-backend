@@ -125,8 +125,6 @@ const CLIENT_SECRET = {
 
 
 exports.authCallback = async (req, res) => {
-    console.log("🔹 authCallback function called!");
-
     try {
         const { code, state } = req.query;
         const { organizationId, name, userId, platform } = JSON.parse(decodeURIComponent(state));
@@ -134,7 +132,6 @@ exports.authCallback = async (req, res) => {
         if (!code || !organizationId || !name || !userId || !platform) {
             return res.status(400).json({ message: "Invalid request." });
         }
-        console.log("Received userId:", userId);
 
         let tokenUrl, tokenData, headers = {};
         let scopes = "";
@@ -208,9 +205,6 @@ exports.authCallback = async (req, res) => {
             organizationId,
             { $push: { groups: group._id } }
         );
-        console.log(userId,"useid");
-        
-    
 
         // Redirect to the frontend homepage after successful group creation.
         res.redirect(process.env.FRONTEND_URL || "http://localhost:3000");

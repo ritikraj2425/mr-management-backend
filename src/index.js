@@ -10,15 +10,20 @@ const mrRoutes = require("./routes/mr.routes");
 const groupRoutes = require("./routes/group.routes");
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+const corsOptions = {
+    origin: "*", // Allow all origins (change this in production)
+    methods: ["GET", "POST", "PUT", "DELETE"], // Allowed methods
+    allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
+};
+
+app.use(cors(corsOptions)); app.use(express.json());
 // app.use(morgan("dev"));
 
 // Routes
 app.use("/organization", organizationRoutes);
 app.use("/auth", authRoutes);
 app.use("/mr", mrRoutes);
-app.use("/group",groupRoutes);
+app.use("/group", groupRoutes);
 
 // Export the app (but don't start the server here)
 module.exports = app;
