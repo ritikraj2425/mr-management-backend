@@ -12,11 +12,13 @@ const groupRoutes = require("./routes/group.routes");
 // Middleware
 const corsOptions = {
     origin: "*", // Allow all origins (change this in production)
-    methods: ["GET", "POST", "PUT", "DELETE"], // Allowed methods
-    allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed methods
+    allowedHeaders: "*", // Allow all headers
+    credentials: true, // Allow cookies and credentials if needed
 };
 
-app.use(cors(corsOptions)); app.use(express.json());
+app.use(cors(corsOptions)); 
+app.use(express.json());
 // app.use(morgan("dev"));
 
 // Routes
