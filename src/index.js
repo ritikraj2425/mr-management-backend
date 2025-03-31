@@ -10,15 +10,21 @@ const mrRoutes = require("./routes/mr.routes");
 const groupRoutes = require("./routes/group.routes");
 const cookieParser = require("cookie-parser");
 
-// Middleware
 const corsOptions = {
-    origin: "*", // Allow all origins (change this in production)
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed methods
-    allowedHeaders: "*", // Allow all headers
-    credentials: true, // Allow cookies and credentials if needed
+    origin: "http://localhost:3000", // allow your specific origin
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "apikey",
+        "jwttoken",
+        "refreshtoken"
+    ],
+    credentials: true,
 };
 
-app.use(cors(corsOptions)); 
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser()); // Make sure this is called before your routes
 
