@@ -9,5 +9,10 @@ router.get('/callback',authCallback)
 router.post('/user/generate-otp',checkForApiKey,requestOTP)
 router.post('/organization/generate-otp',verifyJWT,checkForApiKey,requestOrgOTP)
 router.get('/check', checkHandler)
+router.post("/logout", (req, res) => {
+    // Clear the authToken cookie by setting it with Max-Age=0
+    res.setHeader("Set-Cookie", "authToken=; HttpOnly; Path=/; Max-Age=0; SameSite=None; Secure");
+    return res.status(200).json({ message: "Logout successful" });
+  });
 
 module.exports = router;
