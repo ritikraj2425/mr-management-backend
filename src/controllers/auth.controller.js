@@ -72,7 +72,7 @@ exports.signup = async (req, res) => {
         const payload = { name, email };
         const token = Verification.generateJwt(payload);
         const refreshToken = Verification.generateRefreshToken(payload);
-        res.setHeader("Set-Cookie", `authToken=${token}; HttpOnly; Path=/; Max-Age=259200; Secure; SameSite=Strict`);
+        res.setHeader("Set-Cookie", `authToken=${token}; HttpOnly; Path=/; Max-Age=259200; SameSite=Strict`);
 
 
         res.status(200).json({
@@ -109,7 +109,7 @@ exports.login = async (req, res) => {
 
         const token = Verification.generateJwt(payload);
         const refreshToken = Verification.generateRefreshToken(payload);
-        res.setHeader("Set-Cookie", `authToken=${token}; HttpOnly; Path=/; Max-Age=259200; Secure; SameSite=Strict`);
+        res.setHeader("Set-Cookie", `authToken=${token}; HttpOnly; Path=/; Max-Age=259200;  SameSite=Strict`);
 
         res.status(200).json({
             message: "Login successful",
