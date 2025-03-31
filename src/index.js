@@ -8,6 +8,7 @@ const organizationRoutes = require("./routes/organization.routes");
 const authRoutes = require("./routes/auth.routes");
 const mrRoutes = require("./routes/mr.routes");
 const groupRoutes = require("./routes/group.routes");
+const cookieParser = require("cookie-parser");
 
 // Middleware
 const corsOptions = {
@@ -19,6 +20,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions)); 
 app.use(express.json());
+app.use(cookieParser()); // Make sure this is called before your routes
+
 // app.use(morgan("dev"));
 
 // Routes

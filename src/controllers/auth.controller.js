@@ -9,6 +9,8 @@ const axios = require("axios");
 const { generateOTP, sendOtpEmail } = require("../utils/otp.utils");
 const OrganizationOTP = require("../models/organizationOTP");
 const OTPStore = require("../models/OTPStore");
+const jwt = require("jsonwebtoken");
+
 
 
 exports.signup = async (req, res) => {
@@ -118,6 +120,26 @@ exports.login = async (req, res) => {
         res.status(500).json({ message: "Something went wrong while logging in" });
     }
 };
+
+
+
+const SECRET_KEY = process.env.JWT_SECRET;
+
+exports.checkHandler = async (req, res) => {
+    const token = req.cookies.authToken;
+
+    if (!token) {
+        return res.status(200).json({ isAuthenticated: false });
+    }
+
+    try {
+        jwt.verify(token, SECRET_KEY);
+        return res.status(200).json({ isAuthenticated: true });
+    } catch (error) {
+        return res.status(200).json({ isAuthenticated: false });
+    }
+}
+
 
 const CLIENT_SECRET = {
     github: process.env.GITHUB_CLIENT_SECRET,

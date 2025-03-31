@@ -5,6 +5,7 @@ const connectDB = require('./config/db'); // Import connectDB
 require("dotenv").config(); // Load environment variables
 const { PORT } = require("./config/env"); // Import PORT
 
+
 // Connect to MongoDB before starting the server
 connectDB().then(() => {
     const server = http.createServer(app);
