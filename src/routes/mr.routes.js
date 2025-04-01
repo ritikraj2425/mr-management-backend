@@ -5,7 +5,7 @@ const {checkForApiKey,verifyJWT} = require("../middlewares/auth.middleware");
 
 router.post("/create",checkForApiKey, createMR);
 router.put("/update",checkForApiKey,verifyJWT, mrUpdate);
-router.get("/get", checkForApiKey, verifyJWT, getMR)
-router.get("/getGroup", checkForApiKey, verifyJWT, getMRGroup)
+router.get("/get/:mrId", checkForApiKey, verifyJWT, getMR)
+router.get("/getGroup/:groupId", checkForApiKey, verifyJWT, getMRGroup)
 
 module.exports = router;

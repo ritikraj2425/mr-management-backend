@@ -115,7 +115,7 @@ exports.mrUpdate = async (req, res) => {
 
 exports.getMR = async (req, res) => {
     try {
-        const { mrId } = req.body;
+        const { mrId } = req.params;
         if (!mrId) {
             return res.status(400).send("MR Id is missing");
         }
@@ -131,7 +131,7 @@ exports.getMR = async (req, res) => {
 
 exports.getMRGroup = async (req, res) => {
     try {
-        const { groupId } = req.body;
+        const { groupId } = req.params;
 
         // Validate the groupId
         if (!groupId || !mongoose.Types.ObjectId.isValid(groupId)) {
@@ -144,7 +144,7 @@ exports.getMRGroup = async (req, res) => {
             .populate("reviewerEmails") // This will populate all fields for each reviewer
             .populate("groupId" ,"name");       // This will populate all fields for the group
 
-        return res.status(200).json(mrs);
+        return res.status(200).json({data: mrs});
     } catch (err) {
         console.error("Error in getMRGroup:", err);
         return res.status(500).json({ message: "Server error", error: err.message });
