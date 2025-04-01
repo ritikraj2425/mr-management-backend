@@ -166,3 +166,29 @@ exports.addMembersToOrganization = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
+
+exports.getOrganizationDetails = async (req, res) => {
+    try {
+        const { jwttoken, refreshtoken } = req.headers;
+
+        // Authenticate user
+        let user;
+        try {
+            user = await getUserFromToken(jwttoken, refreshtoken);
+        } catch (error) {
+            return res.status(401).json({ message: error.message });
+        }
+
+        // Find organization by user ID
+        const organization = await Organization.findOne({ members: user._id }).populate('members', 'name email');
+
+        if (!organization) {
+            return res.status(404).json({ message: "Organization not found." });
+        }
+
+        res.status(200).json({ data: organization });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+}

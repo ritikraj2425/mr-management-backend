@@ -44,8 +44,6 @@ exports.createGroup = async (req, res) => {
             platform,
         });
 
-        console.log("State: ", state);
-
         switch (platform) {
             case "github":
                 authUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID.github}&redirect_uri=${REDIRECT_URI}&state=${encodeURIComponent(state)}`;
@@ -62,6 +60,31 @@ exports.createGroup = async (req, res) => {
         }
 
         res.json({ redirectUrl: authUrl }); // Send redirect URL to frontend
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
+
+exports.getGroups = async (req, res) => {
+    try {
+        const { jwttoken, refreshtoken } = req.headers;
+
+        // Authenticate user first before proceeding
+        let user;
+        try {
+            user = await getUserFromToken(jwttoken, refreshtoken);
+        } catch (error) {
+            return res.status(401).json({ message: "Invalid or missing token." });
+        }
+
+        if (!user.organizationId) {
+            return res.status(400).json({ message: "User is not associated with any organization." });
+        }
+
+        const groups = await Group.find({ organizationId: user.organizationId }).populate("organizationId");
+
+        res.json({ groups });
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
     }

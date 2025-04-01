@@ -8,6 +8,7 @@ exports.getUserFromToken = async (jwttoken, refreshtoken) => {
     }
 
     const payload = check.credentials.payload;
+
     const user = await User.findOne({ email: payload.email });
     if (!user) {
         throw new Error("User not found");

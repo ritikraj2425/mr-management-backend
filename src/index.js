@@ -9,6 +9,7 @@ const authRoutes = require("./routes/auth.routes");
 const mrRoutes = require("./routes/mr.routes");
 const groupRoutes = require("./routes/group.routes");
 const cookieParser = require("cookie-parser");
+const userRoutes = require("./routes/user.routes");
 
 const corsOptions = {
     origin: "http://localhost:3000", // allow your specific origin
@@ -35,6 +36,7 @@ app.use("/organization", organizationRoutes);
 app.use("/auth", authRoutes);
 app.use("/mr", mrRoutes);
 app.use("/group", groupRoutes);
+app.use("/user", userRoutes);
 
 // Export the app (but don't start the server here)
 module.exports = app;
