@@ -14,7 +14,7 @@ const REDIRECT_URI = process.env.REDIRECT_URI;
 
 exports.createGroup = async (req, res) => {
     try {
-        const { name, platform } = req.body; // Platform (GitHub, GitLab, Bitbucket, Azure)
+        const { name,description, platform } = req.body; // Platform (GitHub, GitLab, Bitbucket, Azure)
         const { jwttoken, refreshtoken } = req.headers;
         if (!name || !platform) {
             return res.status(400).json({ message: "Group name and platform are required." });
@@ -40,6 +40,7 @@ exports.createGroup = async (req, res) => {
         const state = JSON.stringify({
             organizationId: creatorUser.organizationId,
             name,
+            description,
             userId: creatorUser._id,
             platform,
         });

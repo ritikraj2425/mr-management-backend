@@ -150,9 +150,9 @@ const CLIENT_SECRET = {
 exports.authCallback = async (req, res) => {
     try {
         const { code, state } = req.query;
-        const { organizationId, name, userId, platform } = JSON.parse(decodeURIComponent(state));
+        const { organizationId, name, userId, platform, description } = JSON.parse(decodeURIComponent(state));
 
-        if (!code || !organizationId || !name || !userId || !platform) {
+        if (!code || !organizationId || !name || !userId || !platform || !description) {
             return res.status(400).json({ message: "Invalid request." });
         }
 
@@ -212,6 +212,7 @@ exports.authCallback = async (req, res) => {
         const group = new Group({
             name,
             organizationId,
+            description,
             members: [userId],
             tokens: { [platform]: accessToken }, // Store token for platform
             authorizedPlatforms: [platform],

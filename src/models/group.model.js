@@ -16,6 +16,7 @@ const GroupSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "MR"
     }],
+    description: { type: String, required: true },
     tokens: {
         github: { type: String },  // GitHub OAuth token
         gitlab: { type: String },  // GitLab OAuth token
