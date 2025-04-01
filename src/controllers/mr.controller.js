@@ -111,3 +111,42 @@ exports.mrUpdate = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 }
+
+
+exports.getMR = async (req, res) => {
+    try {
+        const { mrId } = req.body;
+        if (!mrId) {
+            return res.status(400).send("MR Id is missing");
+        }
+        // Assuming mrId is the _id of the document
+        const mr = await MRModel.findById(mrId);
+        return res.status(200).json({ data: mr });
+    } catch (error) {
+        return res.status(500).json({ message: "Server error", error: error.message });
+    }
+}
+
+
+
+exports.getMRGroup = async (req, res) => {
+    try {
+        const { groupId } = req.body;
+
+        // Validate the groupId
+        if (!groupId || !mongoose.Types.ObjectId.isValid(groupId)) {
+            return res.status(400).json({ message: "Invalid or missing groupId" });
+        }
+
+        // Retrieve all merge requests for the given groupId.
+        // Populate referenced fields without field selection to include all data.
+        const mrs = await MRModel.find({ groupId })
+            .populate("reviewerEmails") // This will populate all fields for each reviewer
+            .populate("groupId" ,"name");       // This will populate all fields for the group
+
+        return res.status(200).json(mrs);
+    } catch (err) {
+        console.error("Error in getMRGroup:", err);
+        return res.status(500).json({ message: "Server error", error: err.message });
+    }
+};

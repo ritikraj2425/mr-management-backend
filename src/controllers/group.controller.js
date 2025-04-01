@@ -84,7 +84,7 @@ exports.getGroups = async (req, res) => {
 
         const groups = await Group.find({ organizationId: user.organizationId }).populate("organizationId");
 
-        res.json({ groups });
+        return res.status(200).json({data: groups});
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
     }
