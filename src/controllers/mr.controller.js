@@ -142,11 +142,69 @@ exports.getMRGroup = async (req, res) => {
         // Populate referenced fields without field selection to include all data.
         const mrs = await MRModel.find({ groupId })
             .populate("reviewerEmails") // This will populate all fields for each reviewer
-            .populate("groupId" ,"name");       // This will populate all fields for the group
+            .populate("groupId", "name");       // This will populate all fields for the group
 
-        return res.status(200).json({data: mrs});
+        return res.status(200).json({ data: mrs });
     } catch (err) {
         console.error("Error in getMRGroup:", err);
         return res.status(500).json({ message: "Server error", error: err.message });
     }
 };
+
+exports.getAssignedMR = async (req, res) => {
+    const { jwttoken, refreshtoken } = req.headers;
+    try {
+        let user;
+        try {
+            user = await getUserFromToken(jwttoken, refreshtoken);
+        } catch (error) {
+            return res.status(401).json({ message: "Invalid or missing token." });
+        }
+        const mrs = await MRModel.find({ reviewerEmails: user._id })
+            .populate({
+                path: "reviewerEmails",
+                select: "name email" // Get only name and email of reviewers
+            })
+            .populate({
+                path: "creator",
+                select: "name email" // Get creator's name
+            })
+            .populate({
+                path: "groupId",
+                select: "name" // Get group name
+            });
+
+        return res.status(200).json({ data: mrs });
+    } catch (err) {
+        return res.status(500).send({"server error": err})
+    }
+}
+
+exports.myMRs = async (req, res) => {
+    const { jwttoken, refreshtoken } = req.headers;
+    try {
+        let user;
+        try {
+            user = await getUserFromToken(jwttoken, refreshtoken);
+        } catch (error) {
+            return res.status(401).json({ message: "Invalid or missing token." });
+        }
+        const mrs = await MRModel.find({ creator: user._id })
+            .populate({
+                path: "reviewerEmails",
+                select: "name email" // Get only name and email of reviewers
+            })
+            .populate({
+                path: "creator",
+                select: "name email" // Get creator's name
+            })
+            .populate({
+                path: "groupId",
+                select: "name" // Get group name
+            });
+
+        return res.status(200).json({ data: mrs });
+    } catch (err) {
+        return res.status(500).send({"server error": err})
+    }
+}
