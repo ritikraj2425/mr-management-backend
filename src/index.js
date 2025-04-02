@@ -12,7 +12,7 @@ const cookieParser = require("cookie-parser");
 const userRoutes = require("./routes/user.routes");
 
 const corsOptions = {
-    origin: "http://localhost:3000", // allow your specific origin
+    origin: ["http://localhost:3000", "https://mergeflow.vercel.app"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
         "Content-Type",
