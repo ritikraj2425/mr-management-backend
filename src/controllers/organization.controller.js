@@ -181,7 +181,7 @@ exports.getOrganizationDetails = async (req, res) => {
         }
 
         // Find organization by user ID
-        const organization = await Organization.findOne({ members: user._id }).populate('members', 'name email');
+        const organization = await Organization.findOne({ members: user._id }).populate('members', 'name email isAdmin');
 
         if (!organization) {
             return res.status(404).json({ message: "Organization not found." });
