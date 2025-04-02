@@ -106,3 +106,25 @@ exports.getGroups = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
+
+exports.getUserGroups = async(req, res)=>{
+    try {
+        const { jwttoken, refreshtoken } = req.headers;
+
+        let user;
+        try {
+            user = await getUserFromToken(jwttoken, refreshtoken);
+        } catch (error) {
+            return res.status(401).json({ message: "Invalid or missing token." });
+        }
+
+        // Find all groups where the user is a member
+        const groups = await Group.find({ members: user._id })
+
+        return res.status(200).json({ data: groups });
+    } catch (error) {
+        console.error("Error fetching user groups:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+}
