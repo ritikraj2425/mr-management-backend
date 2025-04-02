@@ -93,7 +93,7 @@ exports.getGroups = async (req, res) => {
             })
             .populate({
                 path: "MRs",
-                select: "title creator groupId status createdAt",
+                select: "title creator groupId status createdAt link",
                 populate: [
                     { path: "creator", select: "name email" }, // Populate creator's name and email
                     { path: "groupId", select: "name" } // Populate group name
