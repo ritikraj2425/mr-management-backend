@@ -185,6 +185,11 @@ exports.addMember = async (req, res) => {
         group.members.push(...newMemberIds);
         await group.save();
         
+        await User.updateMany(
+            { _id: { $in: newMemberIds } },
+            { $addToSet: { groupId: group._id } } // Ensures no duplicates
+        );
+
         return res.status(200).json({ 
             message: "Members added successfully.", 
             addedMembers: newMemberEmails 
