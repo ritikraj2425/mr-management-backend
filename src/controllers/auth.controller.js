@@ -72,7 +72,7 @@ exports.signup = async (req, res) => {
         const payload = { name, email };
         const token = Verification.generateJwt(payload);
         const refreshToken = Verification.generateRefreshToken(payload);
-        res.setHeader("Set-Cookie", `authToken=${token}; HttpOnly; Path=/; Max-Age=259200; SameSite=None; Secure`);
+        res.setHeader("Set-Cookie", `authToken=${token}; HttpOnly; Path=/; Max-Age=259200; SameSite=None; Secure; Domain=.mergeflow.vercel.app`);
         res.status(200).json({
             message: "Signup successful! You are now verified.",
             jwtToken: token,
@@ -107,7 +107,7 @@ exports.login = async (req, res) => {
 
         const token = Verification.generateJwt(payload);
         const refreshToken = Verification.generateRefreshToken(payload);
-        res.setHeader("Set-Cookie", `authToken=${token}; HttpOnly; Path=/; Max-Age=259200; SameSite=None; Secure`);
+        res.setHeader("Set-Cookie", `authToken=${token}; HttpOnly; Path=/; Max-Age=259200; SameSite=None; Secure; Domain=.mergeflow.vercel.app`);
 
         res.status(200).json({
             message: "Login successful",
